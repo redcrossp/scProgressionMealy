@@ -1,5 +1,10 @@
 (
 s.waitForBoot {
+	// USER INPUT
+
+	var initkKeyState = "c4"; // note name as scientific pitch notation (note then octave)
+	var initProgression = 0;  // index of static progressions
+
 
 	// diatonic roman numeral progressions
 	~staticProgressions = [
@@ -8,24 +13,40 @@ s.waitForBoot {
 		[1, 1, 6, 5],
 		[1, 4, 2, 5]
 	];
-	~modulatingProgressions = [
-		[4, 4, 2, 5]
+	~modulationProgressions = Dictionary[
+		// the chromatic note to move to and the valid progressions to move there
+		-5 -> [
+			// down a perfect fourth
+			[4, 4, 2, 5],
+			[4, 4, 2, 7]
+		],
+		5 -> [
+			// up a perfect fourth
+			[3, 6, 2, 5],
+			[3, 6, 2, 7]
+		],
+		7 -> [
+			// up a perfect fifth
+			[4, 4, 2, 5],
+			[4, 4, 2, 7]
+		]
 	];
 
 	// state machine
 	~mealy = (
 		// arbitrary starting progression and key center
-		progression: ~staticProgressions[0],
-		keyCenter: 60,
+		progression: ~staticProgressions.wrapAt(initProgression),
+		keyCenter: initKeyState.asNote.value % 120,
 
 		nextState: {
 			// on modulate return 1, else return chord as MIDI
 			var modulate = (10.rand < 3);
 			if (modulate,
 				{
-					~mealy.keyCenter = ~mealy.keyCenter + 7;
-					~mealy.progression = ~modulatingProgressions.choose;
-					1;
+					var newKey = ~modulationProgressions.keys.choose;
+					~mealy.keyCenter = (~mealy.keyCenter + newKey) % 120;
+					~mealy.progression = ~modulationProgressions.at(newKey).choose;
+					"Modulated with new center: " ++ ~mealy.keyCenter;
 				},
 				{
 					~mealy.progression = ~staticProgressions.choose;
