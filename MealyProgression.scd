@@ -3,14 +3,13 @@ s.waitForBoot {
 	// USER INPUT
 
 	var initKeyState = "c4"; // note name as scientific pitch notation (note then octave)
-	var initProgression = 0;  // index of static progressions
 
 	// Input for state machine transitions, integers only
 	// -0 indicates staying in the same key
 	// -Non-zero values indicate modulation, with the value indicating
-	//  the interval to modulate to (must be in the modulationProgressions
+	//  the interval to modulate to (must be in the progressions
 	//  dictionary or the state machine will not modulate)
-	var progressionList = [0, 5, 0, 7, 0, 0, -5].asStream;
+	var progressionList = [0, 5, 0, 7, 0, 0, -5];
 
 	// dict of diatonic roman numeral chord progressions
 	//   the dict key is the relative chromatic degree to move to before emitting progression
@@ -49,13 +48,10 @@ s.waitForBoot {
 
 		nextState: {
 			var newKey = ~mealy.progressions.next;
-			var output;
-			newKey.postln;
 			~mealy.keyCenter = (~mealy.keyCenter + newKey) % 120;
 			~mealy.progression = ~progressions.at(newKey).choose;
-			output = ~getMidiChordProgression.(~mealy.progression, ~mealy.keyCenter);
-			("Key center " ++ ~mealy.keyCenter ++ ", chords " ++ output).postln;
-			output;
+			~getMidiChordProgression.(~mealy.progression, ~mealy.keyCenter);
+			// ("Key center " ++ ~mealy.keyCenter ++ ", chords " ++ <OUTPUT HERE>).postln;
 		};
 	);
 
@@ -85,7 +81,6 @@ s.waitForBoot {
 		chords;
 	};
 
-	progressionList.do({~mealy.nextState.()});
-
+	progressionList.size.do({ ~mealy.nextState.postln; });
 };
 );
