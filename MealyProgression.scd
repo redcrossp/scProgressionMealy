@@ -10,18 +10,21 @@ s.waitForBoot {
 	// -Non-zero values indicate modulation, with the value indicating
 	//  the interval to modulate to (must be in the modulationProgressions
 	//  dictionary or the state machine will not modulate)
-	var progressionList = [0, 5, 0, 7, 0, 0, -5];
+	var progressionList = [0, 5, 0, 7, 0, 0, -5].asStream;
 
+	// dict of diatonic roman numeral chord progressions
+	//   the dict key is the relative chromatic degree to move to before emitting progression
+	//   consequently, the 0 key means the progression is in the same key as the previous output
+	~progressions = Dictionary[
+		// static chord progressions
+		0 -> [
+			[1, 1, 4, 5],
+			[1, 1, 2, 5],
+			[1, 1, 6, 5],
+			[1, 4, 2, 5]
+		],
 
-	// diatonic roman numeral progressions
-	~staticProgressions = [
-		[1, 1, 4, 5],
-		[1, 1, 2, 5],
-		[1, 1, 6, 5],
-		[1, 4, 2, 5]
-	];
-	~modulationProgressions = Dictionary[
-		// the chromatic note to move to and the valid progressions to move there
+		// modulating progressions
 		-5 -> [
 			// down a perfect fourth
 			[4, 4, 2, 5],
@@ -41,26 +44,18 @@ s.waitForBoot {
 
 	// state machine
 	~mealy = (
-		progression: ~staticProgressions.wrapAt(initProgression),
+		progressions: Pseq(progressionList).asStream,
 		keyCenter: initKeyState.asNote.value % 120,
 
 		nextState: {
-			|input|
-			// on modulate return 1, else return chord as MIDI
-			//var modulate = (10.rand < 3);
-			input.postln; // *** input isn't getting set as expected, causing the code below to break
-			if (input != 0,
-				{
-					var newKey = input;
-					~mealy.keyCenter = (~mealy.keyCenter + newKey) % 120;
-					~mealy.progression = ~modulationProgressions.at(newKey).choose;
-					"Modulated with new center: " ++ ~mealy.keyCenter;
-				},
-				{
-					~mealy.progression = ~staticProgressions.choose;
-					~getMidiChordProgression.(~mealy.progression, ~mealy.keyCenter);
-				}
-			);
+			var newKey = ~mealy.progressions.next;
+			var output;
+			newKey.postln;
+			~mealy.keyCenter = (~mealy.keyCenter + newKey) % 120;
+			~mealy.progression = ~progressions.at(newKey).choose;
+			output = ~getMidiChordProgression.(~mealy.progression, ~mealy.keyCenter);
+			("Key center " ++ ~mealy.keyCenter ++ ", chords " ++ output).postln;
+			output;
 		};
 	);
 
@@ -90,6 +85,7 @@ s.waitForBoot {
 		chords;
 	};
 
-	progressionList.do({|input| ~mealy.nextState.(input)});
+	progressionList.do({~mealy.nextState.()});
+
 };
 );
