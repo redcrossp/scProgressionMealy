@@ -2,8 +2,15 @@
 s.waitForBoot {
 	// USER INPUT
 
-	var initkKeyState = "c4"; // note name as scientific pitch notation (note then octave)
+	var initKeyState = "c4"; // note name as scientific pitch notation (note then octave)
 	var initProgression = 0;  // index of static progressions
+
+	// Input for state machine transitions, integers only
+	// -0 indicates staying in the same key
+	// -Non-zero values indicate modulation, with the value indicating
+	//  the interval to modulate to (must be in the modulationProgressions
+	//  dictionary or the state machine will not modulate)
+	var progressionList = [0, 5, 0, 7, 0, 0, -5];
 
 
 	// diatonic roman numeral progressions
@@ -34,16 +41,17 @@ s.waitForBoot {
 
 	// state machine
 	~mealy = (
-		// arbitrary starting progression and key center
 		progression: ~staticProgressions.wrapAt(initProgression),
 		keyCenter: initKeyState.asNote.value % 120,
 
 		nextState: {
+			|input|
 			// on modulate return 1, else return chord as MIDI
-			var modulate = (10.rand < 3);
-			if (modulate,
+			//var modulate = (10.rand < 3);
+			input.postln; // *** input isn't getting set as expected, causing the code below to break
+			if (input != 0,
 				{
-					var newKey = ~modulationProgressions.keys.choose;
+					var newKey = input;
 					~mealy.keyCenter = (~mealy.keyCenter + newKey) % 120;
 					~mealy.progression = ~modulationProgressions.at(newKey).choose;
 					"Modulated with new center: " ++ ~mealy.keyCenter;
@@ -55,7 +63,6 @@ s.waitForBoot {
 			);
 		};
 	);
-
 
 	~major = Scale.major;
 
@@ -83,6 +90,6 @@ s.waitForBoot {
 		chords;
 	};
 
-	~mealy.nextState;
+	progressionList.do({|input| ~mealy.nextState.(input)});
 };
 );
